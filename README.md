@@ -1,5 +1,10 @@
 # Kotlinchain
 
+Main:
+[![Tests](https://github.com/vasilievan/Kotlinchain/actions/workflows/gradle-tests.yml/badge.svg?branch=main)](https://github.com/vasilievan/Kotlinchain/actions/workflows/gradle-tests.yml)
+Develop:
+[![Tests](https://github.com/vasilievan/Kotlinchain/actions/workflows/gradle-tests.yml/badge.svg?branch=develop)](https://github.com/vasilievan/Kotlinchain/actions/workflows/gradle-tests.yml)
+
 ![alt text](./images/logo.png)
 
 Блокчейн, написанный на языке Kotlin. Написан с использованием фреймворка Ktor.
