@@ -20,20 +20,4 @@ class DatabaseHelper {
             appendText("\n")
         }
     }
-
-    companion object {
-        fun isBlockchainCorrect(firstFile: File, secondFile: File): Boolean {
-            val db1: Set<Block>
-            val db2: Set<Block>
-            with(firstFile) {
-                db1 = this.readLines().map { Json.decodeFromString<Block>(it) }.toSet()
-            }
-            with(secondFile) {
-                db2 = this.readLines().map { Json.decodeFromString<Block>(it) }.toSet()
-            }
-            val difference = db1.subtract(db2)
-            val indices = difference.map { it.index }.toSet()
-            return difference.size == indices.size
-        }
-    }
 }

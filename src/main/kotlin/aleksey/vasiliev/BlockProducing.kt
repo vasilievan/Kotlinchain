@@ -15,7 +15,6 @@ class BlockProducing {
     val dbHelper = DatabaseHelper()
     val currentBlock: AtomicReference<Block> = AtomicReference<Block>()
     val nodesToSend = ServerParameters.nodesToSend
-
     suspend fun produceBlocks() {
         while (true) {
             val frozenBlock = currentBlock.get()
