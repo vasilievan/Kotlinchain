@@ -1,10 +1,22 @@
 package aleksey.vasiliev
 
+import aleksey.vasiliev.ServerParameters.dbName
+import aleksey.vasiliev.ServerParameters.isFirst
+import aleksey.vasiliev.ServerParameters.nodesToSend
+import aleksey.vasiliev.ServerParameters.port
+import aleksey.vasiliev.plugins.configureRouting
+import io.ktor.client.call.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.testing.*
+import kotlinx.coroutines.*
 import org.apache.commons.cli.UnrecognizedOptionException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import aleksey.vasiliev.ServerParameters.nodesToSend
+import java.util.logging.Logger
 
 class ApplicationTest {
     @Test
@@ -91,6 +103,42 @@ class ApplicationTest {
     }
 
     @Test
+    fun checkCorrectCmdArguments() {
+        cmdArgsParser(
+            arrayOf(
+                "-p",
+                "8080",
+                "-n",
+                "http://127.0.0.1:8081,http://127.0.0.1:8082",
+                "-f"
+            )
+        )
+        assertEquals(isFirst.get(), true)
+        cmdArgsParser(
+            arrayOf(
+                "-p",
+                "8080",
+                "-n",
+                "http://127.0.0.1:8081,http://127.0.0.1:8082",
+                "-f"
+            )
+        )
+        assertEquals(nodesToSend, setOf("http://127.0.0.1:8081", "http://127.0.0.1:8082"))
+        cmdArgsParser(
+            arrayOf(
+                "-p",
+                "8080",
+                "-n",
+                "http://127.0.0.1:8081,http://127.0.0.1:8082",
+                "-f",
+                "-d",
+                "a.db"
+            )
+        )
+        assertEquals(dbName, "a.db")
+    }
+
+    @Test
     fun checkIncorrectCmdArguments() {
         var thrown = assertThrows<IllegalArgumentException> {
             cmdArgsParser(
@@ -167,5 +215,129 @@ class ApplicationTest {
             )
         }
         assertEquals("Please, specify the server port!", thrown.message)
+    }
+
+    @Test
+    fun checkServerGetOK() {
+        runBlocking {
+            port = 8080
+            isFirst.set(true)
+            dbName = "a.db"
+            nodesToSend = setOf("http://localhost:8081")
+            RandomString.seed = 3141592653L
+            val blockProducing = BlockProducing()
+            testApplication {
+                val client = createClient {
+                    install(ContentNegotiation) {
+                        json()
+                    }
+                }
+                application {
+                    configureRouting(blockProducing)
+                }
+                val response = client.get("/")
+                assertEquals(response.status, HttpStatusCode.OK)
+                val actual = response.body<Block>()
+                val expected = Block(
+                    "0",
+                    "0",
+                    "15399413692088809598794873290973252182218468600246205908895035468909751000000",
+                    "UPS8xtwbOHkr1PRydPVEiQdGPQK9V2DUe3UAEJ0nCinfuugeTy3H1tU1c4RApMuSJ922qpjtCw6ni6YOaGXuTyMb5v6ltVDXxipstD83fthpFzsn7jELO6oGi5PrNmccj6iovRST3goLT8PONa81oBWkcwWvSjFD8uRvPeZpPdIVMTEilGXkozzRtWC1JZdvkr2YyrVMcblCqOAq9v9YlSnDi0elocwAE89z4IZ9vov3T1UKKv4yvlRxeADfqgvX",
+                    "964593"
+                )
+                assertEquals(expected, actual)
+            }
+        }
+    }
+
+    @Test
+    fun checkServerGetNotFound() {
+        runBlocking {
+            port = 8080
+            isFirst.set(true)
+            dbName = "a.db"
+            nodesToSend = setOf("http://localhost:8081")
+            RandomString.seed = 3141592653L
+            val blockProducing = BlockProducing()
+            testApplication {
+                val client = createClient {
+                    install(ContentNegotiation) {
+                        json()
+                    }
+                }
+                application {
+                    configureRouting(blockProducing)
+                }
+                val response = client.get("/abc")
+                assertEquals(response.status, HttpStatusCode.NotFound)
+            }
+        }
+    }
+
+    @Test
+    fun checkServerPostAccepted() {
+        runBlocking {
+            port = 8080
+            isFirst.set(true)
+            dbName = "a.db"
+            nodesToSend = setOf("http://localhost:8081")
+            RandomString.seed = 3141592653L
+            val blockProducing = BlockProducing()
+            val block = Block(
+                "2",
+                "-16346848297816610177277472819678465847532546009992945195534181085709118000000",
+                "11456792849688944863687221543830969588625239580559150127325152649766174000000",
+                "gSR62l1Z1yp203HXdqCg7sii4MFIHHkYRp3GntVLNkFo6xllu6Uyk44cqfSm1Nl9MunQnzRjl51RkQk5uxWMjtqXRaBCqMZndD4p9mz9DSCZUX0l7GtBb26iHAYsdfTb8mE5hjQ3XayUML8SWQ3i1O0iuYzTXnNUXDWg8BexQHbTM6NCZzQHeHK9pEsg8lm3d9gbWzb5tkwogtATRwRSSj4Srdfhkn8Cz4ol17inmnOpCKf1m8chu6ygVZXKCjHV",
+                "1337748"
+            )
+            testApplication {
+                val client = createClient {
+                    install(ContentNegotiation) {
+                        json()
+                    }
+                }
+                application {
+                    configureRouting(blockProducing)
+                }
+                val response = client.post("/update") {
+                    contentType(ContentType.Application.Json)
+                    setBody(block)
+                }
+                assertEquals(response.status, HttpStatusCode.Accepted)
+            }
+        }
+    }
+
+    @Test
+    fun checkAverageResponse() {
+        val responseAmount = 1000
+        runBlocking {
+            port = 8080
+            isFirst.set(true)
+            dbName = "a.db"
+            nodesToSend = setOf("http://localhost:8081")
+            RandomString.seed = 3141592653L
+            val blockProducing = BlockProducing()
+            testApplication {
+                val client = createClient {
+                    install(ContentNegotiation) {
+                        json()
+                    }
+                }
+                application {
+                    configureRouting(blockProducing)
+                }
+                val start = System.currentTimeMillis()
+                runBlocking {
+                    repeat(responseAmount) {
+                        launch(Dispatchers.IO) {
+                            client.get("/")
+                        }
+                    }
+                }
+                val average = (System.currentTimeMillis() - start).toFloat() / responseAmount
+                Logger.getGlobal().info("Average response time: $average")
+            }
+        }
     }
 }

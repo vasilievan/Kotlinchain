@@ -12,10 +12,11 @@ import aleksey.vasiliev.Block.Companion.isBlockValid
 import aleksey.vasiliev.BlockProducing
 import aleksey.vasiliev.ServerParameters.isFirst
 import aleksey.vasiliev.ServerParameters.port
+import io.ktor.http.*
 import java.math.BigInteger
 import java.util.logging.Logger
 
-suspend fun Application.configureRouting(blockProducing: BlockProducing) {
+fun Application.configureRouting(blockProducing: BlockProducing) {
     Logger.getGlobal().info("Server started at $port port")
     if (isFirst.get()) {
         val producedBlock = blockProducing.produceFirstBlock()
@@ -46,7 +47,7 @@ suspend fun Application.configureRouting(blockProducing: BlockProducing) {
                         val block = blockProducing.findTheFreshestBlock()
                         Logger.getGlobal().info("Updated block: $block")
                         blockProducing.currentBlock.set(block)
-                        blockProducing.sendBlockToNodes(possibleBlock)
+                        blockProducing.sendBlockToNodes(block)
                         blockProducing.dbHelper.writeToDB(block)
                     }
                 }
@@ -56,6 +57,7 @@ suspend fun Application.configureRouting(blockProducing: BlockProducing) {
                 blockProducing.sendBlockToNodes(possibleBlock)
                 blockProducing.dbHelper.writeToDB(possibleBlock)
             }
+            call.respond(HttpStatusCode.Accepted)
         }
         get("/") {
             if (blockProducing.currentBlock.get() != null) {
