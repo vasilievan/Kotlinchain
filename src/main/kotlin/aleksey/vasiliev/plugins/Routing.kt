@@ -46,7 +46,7 @@ suspend fun Application.configureRouting(blockProducing: BlockProducing) {
                         val block = blockProducing.findTheFreshestBlock()
                         Logger.getGlobal().info("Updated block: $block")
                         blockProducing.currentBlock.set(block)
-                        blockProducing.sendBlockToNodes(possibleBlock)
+                        blockProducing.sendBlockToNodes(block)
                         blockProducing.dbHelper.writeToDB(block)
                     }
                 }
